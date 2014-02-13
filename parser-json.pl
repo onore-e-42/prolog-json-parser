@@ -27,23 +27,28 @@ json_analyzer([Pair|Members], [Json_Pair|Json_Members]) :-
 	
 pair_analyzer(Pair, Analyzed_Pair):-
 	pair_to_couple(Pair, [String, Value]),
-	is_string(String),
 	value_analyzer(Value, Analyzed_Value),
 %	string_to_atom(Atom, String),
 %	string_to_atom(ValueAtom, Value),
-	Analyzed_Pair = json_pair(String, Analyzed_Value).
+	Analyzed_Pair = json_pair(Term, Analyzed_Value).
 
 is_string(String):-
 	atom(String).
 
+is_string(String):-
+	string(String).
+
 %json_pair(String, Value) :-
 %	json_string(String),
 %	json_value(Value).
+
 	
 value_analyzer(Value, Analyzed_Value) :-
 	is_string(Value),
 	!,
-	Analyzed_Value = Value.
+	string_to_atom(Value, Atom),
+	term_to_atom(Term, Atom),	
+	Analyzed_Value = Term. %togliere "?
 
 value_analyzer(Value, Analyzed_Value) :-
 	is_number(Value),
@@ -51,9 +56,19 @@ value_analyzer(Value, Analyzed_Value) :-
 	Analyzed_Value = Value.
 
 value_analyzer(Value, Analyzed_Value) :-
-	is_number(Value),
+	string_to_atom(String, Value),
+	string_to_list(String, [First|Rest]),
+	First==91,
+	last(Rest, Last),
+	Last==93,
 	!,
-	Analyzed_Value = Value.
+	term_to_atom(Array, Value),
+	Analyzed_Value = json_array(Array).
+
+is_array(Array):-
+	value_analyzer(Value, _).	
+
+
 
 %json_value(Valu\e) :-
 %	json_object(Value).
@@ -67,7 +82,7 @@ is_number(Value) :-
 
 
 pair_to_couple(Pair, [String,Value]) :-
-	atomic_list_concat([String, Value], ':', Pair).		%:
+	atomic_list_concat([String, Value], ':', Pair).
 
 without_last([_], []).
 without_last([X|Xs], [X|WithoutLast]) :- 
