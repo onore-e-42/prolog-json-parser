@@ -1,89 +1,88 @@
-parsed_json(JSONString, json_object(Members)) :-
-	json_parser(JSONString, Parsed_String),
-	json_analyzer(Parsed_String, Members).
+parsed_json(JSONString, Object) :-
+	atom_chars(JSONString, Chars),
+	phrase(parse_object(Object), Chars).
 
-json_parser(JSONString, Members) :-
-	string_to_atom(String, JSONString),
-	string_to_list(String, [Parenthesis|Tail]),
-	Parenthesis == 123,
-	last(Tail, Last),
-	Last == 125,
-	without_last(Tail, ASCII_Members),
-	string_to_list(String_Members, ASCII_Members),
-	string_to_atom(String_Members, Atom_Members),
-	atomic_list_concat(Members, ',', Atom_Members).	
-%	json_members(Members, Parsed_Members).
+parse_object(Object) -->
+	['{'],
+	parse_object_rest(Object).
 
-json_analyzer([], []).
+parse_object_rest(json_object(Members)) -->
+	parse_members(Members),
+	['}'],
+	!.
 
-json_analyzer([Pair|Members], [Json_Pair|Json_Members]) :-
-%	pair_to_couple(Pair, [String, Value]),
-%	json_pair(String, Value),
-%	string_to_atom(Atom, String),
-%	string_to_atom(ValueAtom, Value),
-%	Json_Pair = json_pair(Atom, ValueAtom),
-	pair_analyzer(Pair, Json_Pair),
-	json_analyzer(Members, Json_Members).
+
+parse_object_rest(json_object([])) -->
+	['}'],
+	!.
+
+parse_members([Pair|Members]) -->
+	parse_pair(Pair),
+	[','],
+	parse_members(Members).
+
+parse_members([Pair]) -->
+	parse_pair(Pair).
+
+parse_pair(json_pair(Key, Value)) -->
+	parse_key(Key),
+	[':'],
+	parse_value(Value).
+
+parse_key(Key) -->
+	parse_string(Key).
+
+parse_value(Value) -->
+	parse_string(Value),
+	!.	
+
+parse_value(Value) -->
+	parse_number(Value),
+	!.
+
+parse_value(Value) -->
+	parse_object(Value),
+	!.	
 	
-pair_analyzer(Pair, Analyzed_Pair):-
-	pair_to_couple(Pair, [String, Value]),
-	value_analyzer(Value, Analyzed_Value),
-%	string_to_atom(Atom, String),
-%	string_to_atom(ValueAtom, Value),
-	Analyzed_Pair = json_pair(Term, Analyzed_Value).
+parse_value(Value) -->
+	parse_array(Value),
+	!.
 
-is_string(String):-
-	atom(String).
+parse_array(Array) -->
+	['['],
+	parse_array_rest(Array).
 
-is_string(String):-
-	string(String).
+parse_array_rest(json_array(Array)) -->
+	parse_elements(Array),
+	[']'].
 
-%json_pair(String, Value) :-
-%	json_string(String),
-%	json_value(Value).
+parse_array_rest(json_array([])) -->
+	[']'].
 
-	
-value_analyzer(Value, Analyzed_Value) :-
-	is_string(Value),
+
+parse_elements([Value|Elements]) -->
+	parse_value(Value),
+	[','],
+	parse_elements(Elements).
+
+parse_elements([Value]) -->
+	parse_value(Value).
+
+parse_number(Number) -->
+	[Number],
+	{atom_number(Number, Integer)},
+	{integer(Integer)}.
+
+parse_string(String) -->
+	['"'],
+	parse_string_rest(String).
+
+parse_string_rest(String) -->
+	[String],
+	{atom(String)},
 	!,
-	string_to_atom(Value, Atom),
-	term_to_atom(Term, Atom),	
-	Analyzed_Value = Term. %togliere "?
+	parse_string_rest(String).
 
-value_analyzer(Value, Analyzed_Value) :-
-	is_number(Value),
-	!,
-	Analyzed_Value = Value.
+parse_string_rest(String) -->
+	['"'].
 
-value_analyzer(Value, Analyzed_Value) :-
-	string_to_atom(String, Value),
-	string_to_list(String, [First|Rest]),
-	First==91,
-	last(Rest, Last),
-	Last==93,
-	!,
-	term_to_atom(Array, Value),
-	Analyzed_Value = json_array(Array).
-
-is_array(Array):-
-	value_analyzer(Value, _).	
-
-
-
-%json_value(Valu\e) :-
-%	json_object(Value).
-
-json_value(Value) :-
-	json_array(Value).
-
-is_number(Value) :-
-	integer(Value).	
-
-
-
-pair_to_couple(Pair, [String,Value]) :-
-	atomic_list_concat([String, Value], ':', Pair).
-
-without_last([_], []).
-without_last([X|Xs], [X|WithoutLast]) :- 
-    without_last(Xs, WithoutLast).
