@@ -5,7 +5,7 @@ parsed_json(JSONString, Object) :-
 	phrase(parse_object(Object), Chars).
 
 %An object is composed of members 
-%within curly braces or hust curly braces.
+%within curly braces or just curly braces.
 parse_object(json_object(Members)) -->
 	whitespace,
 	['{'],
@@ -82,10 +82,25 @@ parse_elements([Value|Elements]) -->
 parse_elements([Value]) -->
 	parse_value(Value).
 
-%A number is an integer.
-parse_number(Number) -->
-	[Number],
-	{atom_number(Number, Integer)},
+%A number is composed of digits.
+parse_number(Digits) -->
+	parse_digits_integer(Digits).
+parse_number([]).
+
+parse_digits_integer(Integer) -->
+	parse_digits(Digits),
+	{number_chars(Integer, Digits)}.
+
+%A digit is an integer
+parse_digits([Digit|MoreDigits]) -->
+	parse_digit(Digit),
+	parse_digits(MoreDigits).
+parse_digits([Digit]) -->
+	parse_digit(Digit).
+
+parse_digit(Digit) -->
+	[Digit],
+	{atom_number(Digit, Integer)},
 	{integer(Integer)}.
 
 %A string is composed of chars.
@@ -97,12 +112,18 @@ parse_string([]) -->
 	['"'],
 	['"'].
 
-%puts the chars back together.
+%puts the string back together.
 parse_chars_atom(Atom) -->
 	parse_chars(Chars),
 	{atom_chars(Atom,Chars)}.
 
 %A char is an atom.
+
+parse_chars([Char|MoreChars]) -->
+	['\\'],
+	!,
+	parse_quotes(Char),
+	parse_chars(MoreChars).
 parse_chars([Char|MoreChars]) -->
 	parse_char(Char),
 	parse_chars(MoreChars).
@@ -112,7 +133,13 @@ parse_chars([Char]) -->
 parse_char(Char) -->
 	[Char],
 	{atom(Char)},
-	{not(Char = '"')}.
+	{not(Char = '"')}.	
+
+parse_quotes(Char) -->
+	[Char],
+	{atom(Char)},
+	{Char = '"'},
+	!.
 
 whitespace -->
 	ws_char,
@@ -123,9 +150,9 @@ whitespace -->
 
 ws_char -->
     [Char],
-    {core:char_type(Char, space)}.
+    {char_type(Char, space)}.
 
-%chain/3 - true if result can be found
+%chain/3 - true if Result can be found
 %inside JSON_obj follow the Fields chain.
 chain(JSON_obj, Fields, Result) :-
 	assert_object(JSON_obj),
