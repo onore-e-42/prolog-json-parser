@@ -1,11 +1,9 @@
 prolog-json-parser
 ==================
 
--->separare riconoscimento ristrutturazione
+Very simple json parser written in prolog.
 
--->riflettere su ciò che dice brighi
-
-
+parsed_json(JSONString, Object): true if Object is JSONString parsed in prolog predicates.
 
 
-Right now it doesn't make any sense
+chain(JSON_obj, Fields, Result): true if Result can be found in JSON_obj following the Fields chain.

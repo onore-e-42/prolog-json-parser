@@ -1,88 +1,166 @@
+%parsed_json/2 - true if Object is JSONString 
+%parsed in prolgo terms.
 parsed_json(JSONString, Object) :-
 	atom_chars(JSONString, Chars),
 	phrase(parse_object(Object), Chars).
 
-parse_object(Object) -->
+%An object is composed of members 
+%within curly braces or hust curly braces.
+parse_object(json_object(Members)) -->
+	whitespace,
 	['{'],
-	parse_object_rest(Object).
-
-parse_object_rest(json_object(Members)) -->
 	parse_members(Members),
 	['}'],
+	whitespace,
 	!.
-
-
-parse_object_rest(json_object([])) -->
+parse_object(json_object([]))-->
+	whitespace,
+	['{'],
+	whitespace,
 	['}'],
+	whitespace,
 	!.
 
-parse_members([Pair|Members]) -->
+%A member is composed of one 
+%or more pairs divided by a comma.
+parse_members([Pair|MoreMembers]) -->
 	parse_pair(Pair),
 	[','],
-	parse_members(Members).
-
+	parse_members(MoreMembers),
+	!.
 parse_members([Pair]) -->
-	parse_pair(Pair).
+	parse_pair(Pair),
+	!.
 
-parse_pair(json_pair(Key, Value)) -->
-	parse_key(Key),
+%A pair is composed of a string 
+%and a value divided by a semicolon.
+parse_pair(json_pair(String, Value)) -->
+	whitespace,
+	parse_string(String),
+	whitespace,
 	[':'],
-	parse_value(Value).
+	whitespace,
+	parse_value(Value),
+	whitespace,
+	!.
 
-parse_key(Key) -->
-	parse_string(Key).
-
+%A value may be a string, 
+%a number, an object or an array.
 parse_value(Value) -->
 	parse_string(Value),
 	!.	
-
 parse_value(Value) -->
 	parse_number(Value),
 	!.
-
 parse_value(Value) -->
 	parse_object(Value),
 	!.	
-	
 parse_value(Value) -->
 	parse_array(Value),
 	!.
 
-parse_array(Array) -->
+%An array is composed of a list 
+%of elements inside square brackets.
+parse_array(json_array(Elements)) -->
 	['['],
-	parse_array_rest(Array).
-
-parse_array_rest(json_array(Array)) -->
-	parse_elements(Array),
+	whitespace,
+	parse_elements(Elements),
+	whitespace,
+	[']'].
+parse_array(json_array([])) -->
+	['['],
+	whitespace,
 	[']'].
 
-parse_array_rest(json_array([])) -->
-	[']'].
-
-
+%Elements are values.
 parse_elements([Value|Elements]) -->
 	parse_value(Value),
+	whitespace,
 	[','],
+	whitespace,
 	parse_elements(Elements).
-
 parse_elements([Value]) -->
 	parse_value(Value).
 
+%A number is an integer.
 parse_number(Number) -->
 	[Number],
 	{atom_number(Number, Integer)},
 	{integer(Integer)}.
 
-parse_string(String) -->
+%A string is composed of chars.
+parse_string(Chars) -->
 	['"'],
-	parse_string_rest(String).
-
-parse_string_rest(String) -->
-	[String],
-	{atom(String)},
-	!,
-	parse_string_rest(String).
-
-parse_string_rest(String) -->
+	parse_chars_atom(Chars),
+	['"'].
+parse_string([]) -->
+	['"'],
 	['"'].
 
+%puts the chars back together.
+parse_chars_atom(Atom) -->
+	parse_chars(Chars),
+	{atom_chars(Atom,Chars)}.
+
+%A char is an atom.
+parse_chars([Char|MoreChars]) -->
+	parse_char(Char),
+	parse_chars(MoreChars).
+parse_chars([Char]) -->
+	parse_char(Char).
+
+parse_char(Char) -->
+	[Char],
+	{atom(Char)},
+	{not(Char = '"')}.
+
+whitespace -->
+	ws_char,
+	!,
+	whitespace.
+whitespace -->
+	[].
+
+ws_char -->
+    [Char],
+    {core:char_type(Char, space)}.
+
+%chain/3 - true if result can be found
+%inside JSON_obj follow the Fields chain.
+chain(JSON_obj, Fields, Result) :-
+	assert_object(JSON_obj),
+	chain_aux(Fields, Result),
+	retract_object(JSON_obj),
+	!.
+chain(JSON_obj, [_], _) :-
+	retract_object(JSON_obj),
+	false.
+
+chain_aux([Field|Index], Result) :-
+	json_pair(Field, json_array(Array)),
+	find_index(Index, Array, Result).
+chain_aux([Field|[]], Result) :-
+	json_pair(Field, Result).
+
+%find_index/3 - recursively find element
+%Index in list Array until Result is not an 
+%array or there are no more indexes.
+find_index([Index|MoreIndexes], Array, Result) :-
+	nth0(Index, Array, json_array(New_Array)),
+	find_index(MoreIndexes, New_Array, Result).
+find_index([Index|[]], Array, Result) :-
+	nth0(Index, Array, Result).
+
+%assert_object/1 - asserts a json object.
+assert_object(json_object([Member|MoreMembers])) :-
+	assert(Member),
+	assert_object(json_object(MoreMembers)),
+	!.
+assert_object(json_object([])).
+
+%retract_object/1 - retracts a json object.
+retract_object(json_object([Member|MoreMembers])) :-
+	retract(Member),
+	retract_object(json_object(MoreMembers)),
+	!.
+retract_object(json_object([])).
