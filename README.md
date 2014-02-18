@@ -7,3 +7,4 @@ parsed_json(JSONString, Object): true if Object is JSONString parsed in prolog p
 
 
 chain(JSON_obj, Fields, Result): true if Result can be found in JSON_obj following the Fields chain.
+
