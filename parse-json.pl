@@ -33,7 +33,7 @@ parse_members([Pair]) -->
 	!.
 
 %A pair is composed of a string 
-%and a value divided by a semicolon.
+%and a value divided by a colon.
 parse_pair(json_pair(String, Value)) -->
 	whitespace,
 	parse_string(String),
