@@ -119,11 +119,14 @@ parse_chars_atom(Atom) -->
 
 %A char is an atom.
 
+%Parsing for escape character \.
 parse_chars([Char|MoreChars]) -->
 	['\\'],
-	!,
 	parse_quotes(Char),
 	parse_chars(MoreChars).
+parse_chars([Char]) -->
+	['\\'],
+	parse_quotes(Char).
 parse_chars([Char|MoreChars]) -->
 	parse_char(Char),
 	parse_chars(MoreChars).
